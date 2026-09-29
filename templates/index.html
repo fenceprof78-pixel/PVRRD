@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PVRRD — Patient Vitals & Readmission Risk Dashboard</title>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+
+<header>
+  <div class="logo">PVR<span>RD</span> <span class="logo-sub">| Patient Vitals & Readmission Risk Monitoring</span></div>
+  <div class="header-meta" id="header-date"></div>
+</header>
+
+<nav>
+  <button class="tab-btn active" data-tab="dashboard" id="tab-dashboard"><span class="tab-icon">📊</span>Ward Overview</button>
+  <button class="tab-btn" data-tab="patients" id="tab-patients"><span class="tab-icon">🛏️</span>Patients</button>
+  <button class="tab-btn" data-tab="vitals" id="tab-vitals"><span class="tab-icon">❤️</span>Log Vitals</button>
+  <button class="tab-btn" data-tab="alerts" id="tab-alerts"><span class="tab-icon">🚨</span>Critical Alerts</button>
+</nav>
+
+<main>
+
+<!-- ══ DASHBOARD ══ -->
+<div class="page active" id="page-dashboard">
+  <div class="section-title">Ward Performance Overview</div>
+  <div class="section-sub">Real-time summary of patient vitals and readmission risk across all wards</div>
+
+  <div class="kpi-grid">
+    <div class="kpi-card teal">
+      <div class="kpi-label">Avg. Heart Rate</div>
+      <div class="kpi-value" id="kpi-hr">—</div>
+      <div class="kpi-sub">Normal range: 60–100 BPM</div>
+    </div>
+    <div class="kpi-card mint">
+      <div class="kpi-label">O2 Alert Rate</div>
+      <div class="kpi-value" id="kpi-o2">—</div>
+      <div class="kpi-sub">SpO2 below 92% threshold</div>
+    </div>
+    <div class="kpi-card amber">
+      <div class="kpi-label">30-Day Readmission</div>
+      <div class="kpi-value" id="kpi-readmit">—</div>
+      <div class="kpi-sub">Target benchmark: 12%</div>
+    </div>
+    <div class="kpi-card rose">
+      <div class="kpi-label">High-Risk Patients</div>
+      <div class="kpi-value" id="kpi-risk">—</div>
+      <div class="kpi-sub">Risk Score ≥ 70</div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">❤️ Average Vitals by Ward (Risk Index %)</div>
+      <div class="bar-chart" id="ward-bar-chart"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">🌡️ Ward Risk Heat Map</div>
+      <div class="heat-grid" id="heat-grid"></div>
+    </div>
+  </div>
+
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">🛏️ Ward Patient Distribution</div>
+      <div class="donut-wrap"><div id="ward-dist-legend" class="donut-legend"></div></div>
+    </div>
+    <div class="card">
+      <div class="card-title">📋 Avg. SpO2 by Ward</div>
+      <div id="spo2-by-ward"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ PATIENTS ══ -->
+<div class="page" id="page-patients">
+  <div class="section-title">Patient Registry</div>
+  <div class="section-sub">View, admit, and manage all monitored patients</div>
+
+  <div class="card">
+    <div class="card-title">➕ Admit New Patient</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Full Name</label><input type="text" id="inp-name" placeholder="e.g. Robert Chen"></div>
+      <div class="form-group"><label>Ward</label>
+        <select id="inp-ward">
+          <option value="ICU">ICU</option>
+          <option value="General A">General A</option>
+          <option value="General B">General B</option>
+          <option value="Cardiology">Cardiology</option>
+        </select>
+      </div>
+      <div class="form-group"><label>Age</label><input type="number" id="inp-age" placeholder="e.g. 64" min="0" max="120"></div>
+      <div class="form-group"><label>Prior Admissions (12mo)</label><input type="number" id="inp-prior" placeholder="e.g. 1" min="0" max="20"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" id="btn-add-patient">Admit Patient</button></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">🛏️ All Patients <span class="count-label" id="patient-count-label"></span></div>
+    <div class="filter-bar">
+      <select id="filter-ward">
+        <option value="">All Wards</option>
+        <option value="ICU">ICU</option>
+        <option value="General A">General A</option>
+        <option value="General B">General B</option>
+        <option value="Cardiology">Cardiology</option>
+      </select>
+      <select id="filter-risk">
+        <option value="">All Patients</option>
+        <option value="risk">High-Risk Only</option>
+        <option value="safe">Stable Only</option>
+      </select>
+    </div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Patient</th><th>Ward</th><th>Age</th><th>Risk Score</th><th>Latest SpO2</th><th>Status</th><th>Action</th></tr></thead>
+        <tbody id="patient-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ VITALS ══ -->
+<div class="page" id="page-vitals">
+  <div class="section-title">Log Vitals</div>
+  <div class="section-sub">Record a new vitals reading for a patient</div>
+
+  <div class="card">
+    <div class="card-title">❤️ Vitals Entry Form</div>
+    <div class="form-grid">
+      <div class="form-group"><label>Patient</label><select id="vitals-patient"></select></div>
+      <div class="form-group"><label>Heart Rate (BPM)</label><input type="number" id="vitals-hr" placeholder="e.g. 78" min="30" max="220"></div>
+      <div class="form-group"><label>SpO2 (%)</label><input type="number" id="vitals-spo2" placeholder="e.g. 96" min="50" max="100"></div>
+      <div class="form-group"><label>Systolic BP</label><input type="number" id="vitals-bp" placeholder="e.g. 120" min="50" max="250"></div>
+    </div>
+    <div class="form-actions"><button class="btn btn-primary" id="btn-add-vitals">Save Reading</button></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">📋 Recent Vitals Entries</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Patient</th><th>Heart Rate</th><th>SpO2</th><th>BP (Sys)</th><th>Status</th><th>Logged</th></tr></thead>
+        <tbody id="vitals-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ALERTS ══ -->
+<div class="page" id="page-alerts">
+  <div class="section-title">🚨 Critical Alerts</div>
+  <div class="section-sub">Patients flagged for low SpO2 (&lt;92%) or high readmission Risk Score (≥70). Prioritise these for immediate clinical review.</div>
+
+  <div id="risk-alerts-container"></div>
+
+  <div class="card">
+    <div class="card-title">🚨 Flagged Patient List</div>
+    <div class="tbl-wrap">
+      <table>
+        <thead><tr><th>Patient</th><th>Ward</th><th>Risk Score</th><th>Latest SpO2</th><th>Alert Reason</th><th>Action</th></tr></thead>
+        <tbody id="risk-tbody"></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<div id="modal-overlay">
+  <div class="modal" id="modal-box">
+    <div class="modal-header">
+      <div><div class="modal-name" id="modal-name">—</div><div class="modal-meta" id="modal-meta">—</div></div>
+      <button class="close-btn" id="btn-close-modal">✕</button>
+    </div>
+    <div class="modal-stat-row">
+      <div class="modal-stat"><div class="modal-stat-val" id="modal-risk">—</div><div class="modal-stat-lbl">Risk Score</div></div>
+      <div class="modal-stat"><div class="modal-stat-val" id="modal-hr-val">—</div><div class="modal-stat-lbl">Heart Rate</div></div>
+      <div class="modal-stat"><div class="modal-stat-val" id="modal-spo2-val">—</div><div class="modal-stat-lbl">SpO2</div></div>
+      <div class="modal-stat"><div class="modal-stat-val" id="modal-status-val">—</div><div class="modal-stat-lbl">Status</div></div>
+    </div>
+    <div class="card-title">Vitals History</div>
+    <div id="modal-subjects"></div>
+  </div>
+</div>
+
+<div id="toast">✓ <span id="toast-msg"></span></div>
+
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
